@@ -17,6 +17,14 @@ const credentialsSchema = z.object({
   displayName: z.string().trim().min(1).max(60).optional(),
 });
 
+const friendlyAuthError = (err: unknown) => {
+  const message = err instanceof Error ? err.message : "Something went wrong";
+  if (message.toLowerCase().includes("failed to fetch")) {
+    return "Could not reach Lovable Cloud. Please check your internet connection and try again.";
+  }
+  return message;
+};
+
 const Auth = () => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -47,7 +55,7 @@ const Auth = () => {
     setBusy(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -56,15 +64,29 @@ const Auth = () => {
           },
         });
         if (error) throw error;
-        toast.success("Welcome to FairShare!");
+        if (data.session?.user) {
+          await supabase.from("profiles").upsert({
+            user_id: data.session.user.id,
+            display_name: displayName,
+          }, { onConflict: "user_id" });
+          navigate("/app", { replace: true });
+        } else {
+          toast.success("Check your email to verify your account, then sign in.");
+          setMode("signin");
+        }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        if (data.user) {
+          await supabase.from("profiles").upsert({
+            user_id: data.user.id,
+            display_name: (data.user.user_metadata?.display_name as string) || email.split("@")[0],
+          }, { onConflict: "user_id" });
+        }
         toast.success("Signed in");
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Something went wrong";
-      toast.error(message);
+      toast.error(friendlyAuthError(err));
     } finally {
       setBusy(false);
     }
@@ -78,8 +100,7 @@ const Auth = () => {
       });
       if (result.error) throw result.error;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Google sign-in failed";
-      toast.error(message);
+      toast.error(friendlyAuthError(err));
     } finally {
       setBusy(false);
     }

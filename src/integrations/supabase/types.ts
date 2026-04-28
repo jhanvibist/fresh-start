@@ -254,23 +254,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      create_profile_for_current_user: {
-        Args: { _avatar_url?: string; _display_name?: string }
-        Returns: {
-          avatar_url: string | null
-          created_at: string
-          display_name: string | null
-          id: string
-          updated_at: string
-          user_id: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "profiles"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
       is_group_member: {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean

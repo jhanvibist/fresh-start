@@ -257,6 +257,53 @@ const Auth = () => {
           <Link to="/" className="hover:text-foreground transition-smooth">← Back to home</Link>
         </p>
       </div>
+
+      {forgotOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-foreground/40 backdrop-blur-sm p-4 animate-fade-in"
+          onClick={() => setForgotOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm bg-card rounded-3xl shadow-float border border-border/60 p-6 animate-fade-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-bold text-foreground mb-1">Forgot password?</h2>
+            <p className="text-sm text-muted-foreground mb-5">
+              Enter your email and we'll send you a link to reset your password.
+            </p>
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="forgotEmail">Email</Label>
+                <Input
+                  id="forgotEmail"
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  required
+                  autoFocus
+                  className="rounded-xl"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="soft"
+                  className="flex-1 rounded-full"
+                  onClick={() => setForgotOpen(false)}
+                  disabled={busy}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" variant="hero" className="flex-1 rounded-full" disabled={busy}>
+                  {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Send link
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

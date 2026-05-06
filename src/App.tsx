@@ -16,6 +16,7 @@ import Expenses from "./pages/app/Expenses.tsx";
 import Chores from "./pages/app/Chores.tsx";
 import Insights from "./pages/app/Insights.tsx";
 import Settle from "./pages/app/Settle.tsx";
+import RoommateProfile from "./pages/app/RoommateProfile.tsx";
 
 const queryClient = new QueryClient();
 

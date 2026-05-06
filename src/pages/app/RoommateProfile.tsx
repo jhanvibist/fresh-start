@@ -59,6 +59,7 @@ type Tx = {
   category: string;
   created_at: string;
   roommate_profile_id: string | null;
+  split_with: any;
 };
 
 const CATEGORIES = [

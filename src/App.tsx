@@ -72,6 +72,14 @@ const App = () => (
                 </RequireAuth>
               }
             />
+            <Route
+              path="/app/roommate/:id"
+              element={
+                <RequireAuth>
+                  <AppLayout><RoommateProfile /></AppLayout>
+                </RequireAuth>
+              }
+            />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

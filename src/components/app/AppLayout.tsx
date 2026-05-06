@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { NavLink, Link, useNavigate } from "react-router-dom";
+import { NavLink, Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Logo } from "@/components/fairshare/Logo";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import {
   PieChart,
   Wallet,
   LogOut,
+  ArrowLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/fairshare/Logo";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 
 const credentialsSchema = z.object({
   email: z.string().email("Enter a valid email"),
@@ -35,6 +35,32 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const target = forgotEmail.trim() || email.trim();
+    if (!z.string().email().safeParse(target).success) {
+      toast.error("Enter a valid email address");
+      return;
+    }
+    setBusy(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(target, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast.success("Password reset link sent! Check your email.");
+      setForgotOpen(false);
+      setForgotEmail("");
+    } catch (err) {
+      toast.error(friendlyAuthError(err));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (!authLoading && session) navigate("/app", { replace: true });
@@ -176,17 +202,38 @@ const Auth = () => {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                autoComplete={mode === "signin" ? "current-password" : "new-password"}
-                className="rounded-xl"
-              />
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                {mode === "signin" && (
+                  <button
+                    type="button"
+                    onClick={() => { setForgotEmail(email); setForgotOpen(true); }}
+                    className="text-xs font-medium text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                  className="rounded-xl pr-11"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
             <Button type="submit" variant="hero" className="w-full rounded-full" disabled={busy}>
               {busy && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -210,6 +257,53 @@ const Auth = () => {
           <Link to="/" className="hover:text-foreground transition-smooth">← Back to home</Link>
         </p>
       </div>
+
+      {forgotOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-foreground/40 backdrop-blur-sm p-4 animate-fade-in"
+          onClick={() => setForgotOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm bg-card rounded-3xl shadow-float border border-border/60 p-6 animate-fade-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-bold text-foreground mb-1">Forgot password?</h2>
+            <p className="text-sm text-muted-foreground mb-5">
+              Enter your email and we'll send you a link to reset your password.
+            </p>
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="forgotEmail">Email</Label>
+                <Input
+                  id="forgotEmail"
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  required
+                  autoFocus
+                  className="rounded-xl"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="soft"
+                  className="flex-1 rounded-full"
+                  onClick={() => setForgotOpen(false)}
+                  disabled={busy}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" variant="hero" className="flex-1 rounded-full" disabled={busy}>
+                  {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Send link
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

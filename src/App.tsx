@@ -8,6 +8,7 @@ import { RequireAuth } from "@/components/auth/RequireAuth";
 import { AppLayout } from "@/components/app/AppLayout";
 import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
+import ResetPassword from "./pages/ResetPassword.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Dashboard from "./pages/app/Dashboard.tsx";
 import Expenses from "./pages/app/Expenses.tsx";

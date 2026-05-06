@@ -184,6 +184,93 @@ export type Database = {
         }
         Relationships: []
       }
+      invitations: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          email: string | null
+          expires_at: string
+          group_id: string
+          id: string
+          invited_by: string
+          invitee_name: string | null
+          status: string
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email?: string | null
+          expires_at?: string
+          group_id: string
+          id?: string
+          invited_by: string
+          invitee_name?: string | null
+          status?: string
+          token?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email?: string | null
+          expires_at?: string
+          group_id?: string
+          id?: string
+          invited_by?: string
+          invitee_name?: string | null
+          status?: string
+          token?: string
+        }
+        Relationships: []
+      }
+      money_requests: {
+        Row: {
+          amount: number
+          created_at: string
+          from_user: string
+          group_id: string
+          id: string
+          items: Json | null
+          kind: string
+          note: string | null
+          status: string
+          to_user: string
+          trip_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          from_user: string
+          group_id: string
+          id?: string
+          items?: Json | null
+          kind?: string
+          note?: string | null
+          status?: string
+          to_user: string
+          trip_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          from_user?: string
+          group_id?: string
+          id?: string
+          items?: Json | null
+          kind?: string
+          note?: string | null
+          status?: string
+          to_user?: string
+          trip_date?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

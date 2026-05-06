@@ -130,21 +130,15 @@ const RoommateProfile = () => {
   const balance = useMemo(() => {
     let b = 0;
     for (const t of txs) {
-      const half = splitTypeOf(t) === "full" ? Number(t.amount) : Number(t.amount) / 2;
-      if (t.kind === "send" && t.from_user === user?.id) b -= Number(t.amount); // you sent them money
-      else if (t.kind === "send" && t.to_user === user?.id) b += Number(t.amount);
-      else if (t.kind === "request") {
-        // request encodes: paid_by=you (their share owed to you) or paid_by=them
-        if (t.from_user === user?.id) b += half; // you paid → they owe their share
-        else b -= half;
-      }
+      const meta = Array.isArray(t.split_with) ? (t.split_with[0] as any) : null;
+      const split = meta?.type ?? "equal";
+      const youPaid = meta?.payer === "you";
+      const share = split === "full" ? Number(t.amount) : Number(t.amount) / 2;
+      if (youPaid) b += share;
+      else b -= share;
     }
     return b;
   }, [txs, user?.id]);
-
-  function splitTypeOf(t: Tx): "equal" | "full" {
-    return Array.isArray(t.split_with_meta) ? "equal" : "equal";
-  }
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();

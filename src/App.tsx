@@ -9,6 +9,7 @@ import { AppLayout } from "@/components/app/AppLayout";
 import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
+import JoinGroup from "./pages/JoinGroup.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Dashboard from "./pages/app/Dashboard.tsx";
 import Expenses from "./pages/app/Expenses.tsx";
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/join/:token" element={<JoinGroup />} />
             <Route
               path="/app"
               element={

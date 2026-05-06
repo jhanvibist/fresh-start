@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveGroup } from "@/hooks/useActiveGroup";
 import { Button } from "@/components/ui/button";
+import { RoommateSection } from "@/components/app/RoommateSection";
 import {
   ArrowUpRight,
   Plus,
@@ -96,6 +97,9 @@ const Dashboard = () => {
           </Button>
         </div>
       </div>
+
+      {/* Roommates & money */}
+      <RoommateSection />
 
       {/* Stat row */}
       <div className="grid sm:grid-cols-3 gap-4">

@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActiveGroup } from "@/hooks/useActiveGroup";
 import { Button } from "@/components/ui/button";
 import { RoommateSection } from "@/components/app/RoommateSection";
+import roommatesHero from "@/assets/roommates-hero.jpg";
 import {
   ArrowUpRight,
   Plus,
@@ -12,6 +13,16 @@ import {
   ListChecks,
   Wallet,
   Scale,
+  Home,
+  Droplet,
+  Zap,
+  Wifi,
+  Flame,
+  ShoppingBasket,
+  Plane,
+  Utensils,
+  Sparkles,
+  Calendar,
 } from "lucide-react";
 
 type Expense = {
@@ -73,6 +84,17 @@ const Dashboard = () => {
 
   const greeting = (user?.user_metadata?.display_name as string) || user?.email?.split("@")[0] || "there";
 
+  const trackables = [
+    { icon: Home, label: "Rent" },
+    { icon: Zap, label: "Electricity" },
+    { icon: Droplet, label: "Water" },
+    { icon: Wifi, label: "Wi-Fi" },
+    { icon: Flame, label: "Cooking gas" },
+    { icon: ShoppingBasket, label: "Groceries" },
+    { icon: Utensils, label: "Food" },
+    { icon: Plane, label: "Trips" },
+  ];
+
   return (
     <div className="space-y-8 pb-24 lg:pb-0">
       <div>
@@ -81,6 +103,17 @@ const Dashboard = () => {
         <p className="text-sm text-muted-foreground mt-1">
           {group?.name} · {memberCount} {memberCount === 1 ? "member" : "members"}
         </p>
+      </div>
+
+      {/* Hero photo */}
+      <div className="rounded-3xl overflow-hidden shadow-card border border-border/60">
+        <img
+          src={roommatesHero}
+          alt="Roommates splitting expenses"
+          width={1024}
+          height={512}
+          className="w-full h-40 object-cover"
+        />
       </div>
 
       {/* Hero balance card */}
@@ -101,11 +134,51 @@ const Dashboard = () => {
       {/* Roommates & money */}
       <RoommateSection />
 
+      {/* What you can track */}
+      <section>
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <h2 className="font-bold">What you can track together</h2>
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {trackables.map((t) => (
+            <div key={t.label} className="bg-card rounded-2xl border border-border/60 p-3 flex flex-col items-center text-center shadow-soft">
+              <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center mb-1">
+                <t.icon className="h-4 w-4 text-primary" />
+              </div>
+              <span className="text-[10px] font-medium leading-tight">{t.label}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Stat row */}
       <div className="grid sm:grid-cols-3 gap-4">
         <StatCard icon={Scale} label="Fairness Score" value={`${fairnessScore}%`} progress={fairnessScore} />
         <StatCard icon={Receipt} label="Recent expenses" value={String(expenses.length)} />
         <StatCard icon={ListChecks} label="Chores done" value={`${choresDone}/${chores.length}`} />
+      </div>
+
+      {/* This month at a glance */}
+      <div className="bg-card rounded-2xl border border-border/60 p-4 shadow-soft">
+        <div className="flex items-center gap-2 mb-2">
+          <Calendar className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-bold">This month at a glance</h3>
+        </div>
+        <div className="grid grid-cols-3 gap-3 text-center">
+          <div>
+            <p className="text-[10px] text-muted-foreground">Spent</p>
+            <p className="text-base font-bold">₹{totalSpent.toFixed(0)}</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground">Your share</p>
+            <p className="text-base font-bold">₹{yourSpent.toFixed(0)}</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground">Chores</p>
+            <p className="text-base font-bold">{choresDone}/{chores.length}</p>
+          </div>
+        </div>
       </div>
 
       {/* Recent activity */}

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveGroup } from "@/hooks/useActiveGroup";
@@ -8,98 +9,44 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  UserPlus,
-  Copy,
-  Share2,
-  IndianRupee,
-  ArrowDownLeft,
-  ArrowUpRight,
-  Check,
-  X,
-  Users,
-  Mail,
-} from "lucide-react";
+import { UserPlus, Plus, Camera, Users } from "lucide-react";
 import { toast } from "sonner";
 
-type Member = {
-  user_id: string;
-  display_name: string | null;
-};
+const EMOJI_AVATARS = ["👩", "👨", "🧑", "👧", "👦", "🦸", "🧕", "👩‍🎓", "👨‍🎓", "🐱", "🐶", "🦊"];
 
-type MoneyRequest = {
+type Roommate = {
   id: string;
-  from_user: string;
-  to_user: string;
-  amount: number;
-  kind: string;
-  status: string;
-  note: string | null;
-  trip_date: string | null;
-  items: any;
-  created_at: string;
+  name: string;
+  email: string | null;
+  avatar_url: string | null;
 };
 
 export const RoommateSection = () => {
   const { user } = useAuth();
   const { group } = useActiveGroup();
-  const [members, setMembers] = useState<Member[]>([]);
-  const [requests, setRequests] = useState<MoneyRequest[]>([]);
-  const [inviteOpen, setInviteOpen] = useState(false);
-  const [moneyOpen, setMoneyOpen] = useState(false);
-
-  // Invite form
-  const [inviteName, setInviteName] = useState("");
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteLink, setInviteLink] = useState("");
+  const [roommates, setRoommates] = useState<Roommate[]>([]);
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [avatar, setAvatar] = useState<string>("👩");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
-  // Money form
-  const [kind, setKind] = useState<"request" | "send">("request");
-  const [toUser, setToUser] = useState("");
-  const [amount, setAmount] = useState("");
-  const [note, setNote] = useState("");
-  const [tripDate, setTripDate] = useState("");
-  const [itemsText, setItemsText] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
     if (!group) return;
-    const { data: mem } = await supabase
-      .from("group_members")
-      .select("user_id")
-      .eq("group_id", group.id);
-    const ids = (mem ?? []).map((m) => m.user_id);
-    const { data: profs } = await supabase
-      .from("profiles")
-      .select("user_id, display_name")
-      .in("user_id", ids.length ? ids : ["00000000-0000-0000-0000-000000000000"]);
-    setMembers(
-      ids.map((id) => ({
-        user_id: id,
-        display_name: profs?.find((p) => p.user_id === id)?.display_name ?? null,
-      }))
-    );
-
-    const { data: mr } = await supabase
-      .from("money_requests")
-      .select("*")
+    const { data } = await supabase
+      .from("roommate_profiles")
+      .select("id, name, email, avatar_url")
       .eq("group_id", group.id)
-      .order("created_at", { ascending: false })
-      .limit(10);
-    setRequests((mr ?? []) as MoneyRequest[]);
+      .order("created_at");
+    setRoommates((data ?? []) as Roommate[]);
   };
 
   useEffect(() => {
@@ -107,19 +54,13 @@ export const RoommateSection = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [group?.id]);
 
-  // Realtime updates
   useEffect(() => {
     if (!group) return;
     const ch = supabase
-      .channel(`group-${group.id}`)
+      .channel(`rmp-${group.id}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "money_requests", filter: `group_id=eq.${group.id}` },
-        () => load()
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "group_members", filter: `group_id=eq.${group.id}` },
+        { event: "*", schema: "public", table: "roommate_profiles", filter: `group_id=eq.${group.id}` },
         () => load()
       )
       .subscribe();
@@ -129,299 +70,163 @@ export const RoommateSection = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [group?.id]);
 
-  const handleInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!group || !user) return;
-    setBusy(true);
-    const { data, error } = await supabase
-      .from("invitations")
-      .insert({
-        group_id: group.id,
-        invited_by: user.id,
-        invitee_name: inviteName.trim() || null,
-        email: inviteEmail.trim() || null,
-      })
-      .select("token")
-      .single();
-    setBusy(false);
-    if (error || !data) {
-      toast.error(error?.message || "Could not create invite");
-      return;
-    }
-    const link = `${window.location.origin}/join/${data.token}`;
-    setInviteLink(link);
-    toast.success("Invite link ready — share it with your roommate");
+  const onPickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setPhotoFile(f);
+    setPhotoPreview(URL.createObjectURL(f));
   };
 
-  const shareInvite = async () => {
-    const inviterName =
-      (user?.user_metadata?.display_name as string) || user?.email?.split("@")[0] || "Your roommate";
-    const text = `${inviterName} invited you to share expenses on FairShare. Tap to join: ${inviteLink}`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: "Join my FairShare household", text, url: inviteLink });
+  const reset = () => {
+    setName("");
+    setEmail("");
+    setAvatar("👩");
+    setPhotoFile(null);
+    setPhotoPreview(null);
+  };
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!group || !user || !name.trim()) return;
+    setBusy(true);
+    let avatar_url: string | null = avatar;
+    if (photoFile) {
+      const ext = photoFile.name.split(".").pop() || "jpg";
+      const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("roommate-avatars").upload(path, photoFile);
+      if (upErr) {
+        setBusy(false);
+        toast.error(upErr.message);
         return;
-      } catch {
-        /* user cancelled */
       }
+      const { data: pub } = supabase.storage.from("roommate-avatars").getPublicUrl(path);
+      avatar_url = pub.publicUrl;
     }
-    // Fallback: WhatsApp
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-  };
-
-  const copyLink = async () => {
-    await navigator.clipboard.writeText(inviteLink);
-    toast.success("Link copied");
-  };
-
-  const emailInvite = () => {
-    const inviterName =
-      (user?.user_metadata?.display_name as string) || user?.email?.split("@")[0] || "Your roommate";
-    const subject = encodeURIComponent(`${inviterName} invited you to FairShare`);
-    const body = encodeURIComponent(
-      `Hi${inviteName ? " " + inviteName : ""},\n\n${inviterName} invited you to share household expenses on FairShare.\n\nTap this link to join:\n${inviteLink}\n\nSee you there!`
-    );
-    const to = inviteEmail ? encodeURIComponent(inviteEmail) : "";
-    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
-  };
-
-  const handleMoney = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!group || !user) return;
-    const amt = Number(amount);
-    if (!toUser || !amt || amt <= 0) {
-      toast.error("Pick a roommate and enter a valid amount");
-      return;
-    }
-    const items = itemsText
-      .split("\n")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    setBusy(true);
-    const payload =
-      kind === "request"
-        ? { group_id: group.id, from_user: toUser, to_user: user.id, amount: amt, kind, note: note || null, trip_date: tripDate || null, items }
-        : { group_id: group.id, from_user: user.id, to_user: toUser, amount: amt, kind, status: "completed", note: note || null, trip_date: tripDate || null, items };
-    const { error } = await supabase.from("money_requests").insert(payload);
+    const { error } = await supabase.from("roommate_profiles").insert({
+      group_id: group.id,
+      created_by: user.id,
+      name: name.trim(),
+      email: email.trim() || null,
+      avatar_url,
+    });
     setBusy(false);
     if (error) {
       toast.error(error.message);
       return;
     }
-    toast.success(kind === "request" ? "Request sent to your roommate" : "Payment recorded");
-    setAmount("");
-    setNote("");
-    setTripDate("");
-    setItemsText("");
-    setMoneyOpen(false);
+    toast.success(`${name.trim()} added to your household`);
+    reset();
+    setOpen(false);
     load();
   };
 
-  const updateStatus = async (id: string, status: string) => {
-    const { error } = await supabase.from("money_requests").update({ status }).eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success("Updated");
-    load();
-  };
-
-  const nameOf = (uid: string) => {
-    if (uid === user?.id) return "You";
-    const m = members.find((x) => x.user_id === uid);
-    return m?.display_name || "Roommate";
-  };
-
-  const otherMembers = members.filter((m) => m.user_id !== user?.id);
+  const isPhoto = (a: string | null) => !!a && (a.startsWith("http") || a.startsWith("blob:"));
 
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="font-bold">Roommates & money</h2>
-        <span className="text-xs text-muted-foreground">{members.length} in household</span>
+        <h2 className="font-bold">My roommates</h2>
+        <span className="text-xs text-muted-foreground">{roommates.length} added</span>
       </div>
 
-      {/* Members chips */}
       <div className="bg-card rounded-2xl border border-border/60 p-4 shadow-soft">
-        <div className="flex items-center gap-2 flex-wrap">
-          {members.map((m) => (
-            <div
-              key={m.user_id}
-              className="flex items-center gap-2 bg-secondary rounded-full pl-1 pr-3 py-1"
-            >
-              <div className="h-6 w-6 rounded-full bg-gradient-brand text-primary-foreground text-xs font-bold flex items-center justify-center">
-                {(m.display_name || "?")[0]?.toUpperCase()}
-              </div>
-              <span className="text-xs font-medium">
-                {m.user_id === user?.id ? "You" : m.display_name || "Roommate"}
-              </span>
+        <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 snap-x">
+          {/* You */}
+          <div className="flex flex-col items-center shrink-0 w-16 snap-start">
+            <div className="h-14 w-14 rounded-full bg-gradient-brand text-primary-foreground flex items-center justify-center font-bold ring-2 ring-primary/20">
+              {(user?.user_metadata?.display_name as string)?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "Y"}
             </div>
+            <span className="text-[11px] mt-1 font-medium">You</span>
+          </div>
+
+          {roommates.map((r) => (
+            <Link
+              key={r.id}
+              to={`/app/roommate/${r.id}`}
+              className="flex flex-col items-center shrink-0 w-16 snap-start group"
+            >
+              <div className="h-14 w-14 rounded-full bg-secondary overflow-hidden flex items-center justify-center text-2xl ring-2 ring-transparent group-hover:ring-primary/40 transition">
+                {isPhoto(r.avatar_url) ? (
+                  <img src={r.avatar_url!} alt={r.name} className="h-full w-full object-cover" />
+                ) : (
+                  <span>{r.avatar_url || "👤"}</span>
+                )}
+              </div>
+              <span className="text-[11px] mt-1 font-medium truncate w-full text-center">{r.name}</span>
+            </Link>
           ))}
-        </div>
 
-        <div className="grid grid-cols-2 gap-2 mt-4">
-          <Dialog open={inviteOpen} onOpenChange={(v) => { setInviteOpen(v); if (!v) setInviteLink(""); }}>
+          {/* Add */}
+          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
             <DialogTrigger asChild>
-              <Button variant="hero" className="rounded-full w-full">
-                <UserPlus className="h-4 w-4" /> Add roommate
-              </Button>
+              <button className="flex flex-col items-center shrink-0 w-16 snap-start">
+                <div className="h-14 w-14 rounded-full border-2 border-dashed border-border flex items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition">
+                  <Plus className="h-5 w-5" />
+                </div>
+                <span className="text-[11px] mt-1 font-medium">Add</span>
+              </button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Invite a roommate</DialogTitle>
-                <DialogDescription>
-                  They'll join your household and can add expenses, request or send money.
-                </DialogDescription>
+                <DialogTitle>Add a roommate</DialogTitle>
+                <DialogDescription>Save them to your household. No verification needed.</DialogDescription>
               </DialogHeader>
-              {!inviteLink ? (
-                <form onSubmit={handleInvite} className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="iname">Roommate's name (optional)</Label>
-                    <Input id="iname" value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="Priya Sharma" className="rounded-xl" />
+              <form onSubmit={handleAdd} className="space-y-4">
+                {/* Avatar picker */}
+                <div className="flex flex-col items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    className="h-20 w-20 rounded-full bg-secondary overflow-hidden flex items-center justify-center text-3xl relative group"
+                  >
+                    {photoPreview ? (
+                      <img src={photoPreview} alt="preview" className="h-full w-full object-cover" />
+                    ) : (
+                      <span>{avatar}</span>
+                    )}
+                    <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                      <Camera className="h-5 w-5 text-white" />
+                    </span>
+                  </button>
+                  <input ref={fileRef} type="file" accept="image/*" onChange={onPickPhoto} hidden />
+                  <div className="flex gap-1.5 flex-wrap justify-center max-w-xs">
+                    {EMOJI_AVATARS.map((e) => (
+                      <button
+                        key={e}
+                        type="button"
+                        onClick={() => { setAvatar(e); setPhotoFile(null); setPhotoPreview(null); }}
+                        className={`h-8 w-8 rounded-full text-lg flex items-center justify-center ${avatar === e && !photoPreview ? "bg-primary/20 ring-2 ring-primary" : "bg-secondary"}`}
+                      >
+                        {e}
+                      </button>
+                    ))}
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="iemail">Email (optional)</Label>
-                    <Input id="iemail" type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="priya@example.com" className="rounded-xl" />
-                  </div>
-                  <Button type="submit" variant="hero" className="rounded-full w-full" disabled={busy}>
-                    Generate invite link
-                  </Button>
-                </form>
-              ) : (
-                <div className="space-y-3">
-                  <div className="bg-secondary rounded-xl p-3 text-xs break-all font-mono">{inviteLink}</div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <Button onClick={copyLink} variant="outline" className="rounded-full">
-                      <Copy className="h-4 w-4" /> Copy
-                    </Button>
-                    <Button onClick={shareInvite} variant="outline" className="rounded-full">
-                      <Share2 className="h-4 w-4" /> Share
-                    </Button>
-                    <Button onClick={emailInvite} variant="outline" className="rounded-full">
-                      <Mail className="h-4 w-4" /> Email
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Once your roommate opens the link and signs up, they'll appear on your dashboard automatically.
-                  </p>
                 </div>
-              )}
-            </DialogContent>
-          </Dialog>
 
-          <Dialog open={moneyOpen} onOpenChange={setMoneyOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="rounded-full w-full" disabled={otherMembers.length === 0}>
-                <IndianRupee className="h-4 w-4" /> Request / Send
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Request or send money</DialogTitle>
-                <DialogDescription>Log a trip, shopping, or any shared spend.</DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleMoney} className="space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <Button type="button" variant={kind === "request" ? "hero" : "outline"} className="rounded-full" onClick={() => setKind("request")}>
-                    <ArrowDownLeft className="h-4 w-4" /> Request
-                  </Button>
-                  <Button type="button" variant={kind === "send" ? "hero" : "outline"} className="rounded-full" onClick={() => setKind("send")}>
-                    <ArrowUpRight className="h-4 w-4" /> Send
-                  </Button>
+                <div className="space-y-1.5">
+                  <Label htmlFor="rname">Name</Label>
+                  <Input id="rname" value={name} onChange={(e) => setName(e.target.value)} placeholder="Priya Sharma" required className="rounded-xl" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>{kind === "request" ? "Request from" : "Send to"}</Label>
-                  <Select value={toUser} onValueChange={setToUser}>
-                    <SelectTrigger className="rounded-xl"><SelectValue placeholder="Choose roommate" /></SelectTrigger>
-                    <SelectContent>
-                      {otherMembers.map((m) => (
-                        <SelectItem key={m.user_id} value={m.user_id}>{m.display_name || "Roommate"}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="remail">Email (optional)</Label>
+                  <Input id="remail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="priya@example.com" className="rounded-xl" />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="amt">Amount (₹)</Label>
-                    <Input id="amt" type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="500" required className="rounded-xl" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="td">Date</Label>
-                    <Input id="td" type="date" value={tripDate} onChange={(e) => setTripDate(e.target.value)} className="rounded-xl" />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="note">What's it for?</Label>
-                  <Input id="note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Goa trip, weekly groceries…" className="rounded-xl" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="items">Items (one per line)</Label>
-                  <Textarea id="items" value={itemsText} onChange={(e) => setItemsText(e.target.value)} placeholder={"Petrol\nDinner at Cafe\nHotel night 1"} className="rounded-xl min-h-20" />
-                </div>
-                <Button type="submit" variant="hero" className="rounded-full w-full" disabled={busy}>
-                  {kind === "request" ? "Send request" : "Record payment"}
+
+                <Button type="submit" variant="hero" className="rounded-full w-full" disabled={busy || !name.trim()}>
+                  <UserPlus className="h-4 w-4" /> Add roommate
                 </Button>
               </form>
             </DialogContent>
           </Dialog>
         </div>
+
+        {roommates.length === 0 && (
+          <div className="mt-4 flex items-start gap-2 text-xs text-muted-foreground">
+            <Users className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+            <p>Add your roommates to start tracking trips, rent and shared bills together.</p>
+          </div>
+        )}
       </div>
-
-      {/* Money requests list */}
-      {requests.length > 0 && (
-        <div className="bg-card rounded-2xl border border-border/60 divide-y divide-border/60 overflow-hidden">
-          {requests.map((r) => {
-            const incomingRequest = r.kind === "request" && r.from_user === user?.id && r.status === "pending";
-            const outgoingRequest = r.kind === "request" && r.to_user === user?.id && r.status === "pending";
-            return (
-              <div key={r.id} className="p-4 space-y-2">
-                <div className="flex items-start gap-3">
-                  <div className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 ${r.kind === "send" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                    {r.kind === "send" ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownLeft className="h-4 w-4" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">
-                      {r.kind === "send"
-                        ? `${nameOf(r.from_user)} paid ${nameOf(r.to_user)}`
-                        : `${nameOf(r.to_user)} requested from ${nameOf(r.from_user)}`}
-                    </p>
-                    {r.note && <p className="text-xs text-muted-foreground truncate">{r.note}</p>}
-                    {r.trip_date && <p className="text-[11px] text-muted-foreground">{new Date(r.trip_date).toLocaleDateString("en-IN")}</p>}
-                    {Array.isArray(r.items) && r.items.length > 0 && (
-                      <ul className="text-[11px] text-muted-foreground mt-1 list-disc pl-4">
-                        {r.items.slice(0, 3).map((it: string, i: number) => <li key={i}>{it}</li>)}
-                      </ul>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-primary">₹{Number(r.amount).toFixed(2)}</p>
-                    <p className={`text-[10px] uppercase font-semibold ${r.status === "pending" ? "text-amber-600" : r.status === "approved" || r.status === "completed" ? "text-emerald-600" : "text-muted-foreground"}`}>{r.status}</p>
-                  </div>
-                </div>
-                {incomingRequest && (
-                  <p className="text-xs text-muted-foreground">Waiting for {nameOf(r.to_user)} to confirm.</p>
-                )}
-                {outgoingRequest && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button size="sm" variant="hero" className="rounded-full" onClick={() => updateStatus(r.id, "approved")}>
-                      <Check className="h-4 w-4" /> Approve
-                    </Button>
-                    <Button size="sm" variant="outline" className="rounded-full" onClick={() => updateStatus(r.id, "declined")}>
-                      <X className="h-4 w-4" /> Decline
-                    </Button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {requests.length === 0 && otherMembers.length > 0 && (
-        <div className="bg-card rounded-2xl border border-dashed border-border p-6 text-center">
-          <Users className="h-5 w-5 text-primary mx-auto mb-2" />
-          <p className="text-sm font-semibold">No money activity yet</p>
-          <p className="text-xs text-muted-foreground mt-1">Plan a trip or split a bill — request or send money to your roommate.</p>
-        </div>
-      )}
     </section>
   );
 };

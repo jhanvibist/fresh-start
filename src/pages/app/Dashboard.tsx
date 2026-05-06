@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActiveGroup } from "@/hooks/useActiveGroup";
 import { Button } from "@/components/ui/button";
 import { RoommateSection } from "@/components/app/RoommateSection";
+import roommatesHero from "@/assets/roommates-hero.jpg";
 import {
   ArrowUpRight,
   Plus,
@@ -12,6 +13,16 @@ import {
   ListChecks,
   Wallet,
   Scale,
+  Home,
+  Droplet,
+  Zap,
+  Wifi,
+  Flame,
+  ShoppingBasket,
+  Plane,
+  Utensils,
+  Sparkles,
+  Calendar,
 } from "lucide-react";
 
 type Expense = {

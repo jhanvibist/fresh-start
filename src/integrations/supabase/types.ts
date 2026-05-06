@@ -229,6 +229,7 @@ export type Database = {
       money_requests: {
         Row: {
           amount: number
+          category: string
           created_at: string
           from_user: string
           group_id: string
@@ -236,6 +237,8 @@ export type Database = {
           items: Json | null
           kind: string
           note: string | null
+          roommate_profile_id: string | null
+          split_with: Json
           status: string
           to_user: string
           trip_date: string | null
@@ -243,6 +246,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          category?: string
           created_at?: string
           from_user: string
           group_id: string
@@ -250,6 +254,8 @@ export type Database = {
           items?: Json | null
           kind?: string
           note?: string | null
+          roommate_profile_id?: string | null
+          split_with?: Json
           status?: string
           to_user: string
           trip_date?: string | null
@@ -257,6 +263,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          category?: string
           created_at?: string
           from_user?: string
           group_id?: string
@@ -264,6 +271,8 @@ export type Database = {
           items?: Json | null
           kind?: string
           note?: string | null
+          roommate_profile_id?: string | null
+          split_with?: Json
           status?: string
           to_user?: string
           trip_date?: string | null
@@ -295,6 +304,42 @@ export type Database = {
           id?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      roommate_profiles: {
+        Row: {
+          avatar_url: string | null
+          color: string | null
+          created_at: string
+          created_by: string
+          email: string | null
+          group_id: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          color?: string | null
+          created_at?: string
+          created_by: string
+          email?: string | null
+          group_id: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          color?: string | null
+          created_at?: string
+          created_by?: string
+          email?: string | null
+          group_id?: string
+          id?: string
+          name?: string
+          updated_at?: string
         }
         Relationships: []
       }

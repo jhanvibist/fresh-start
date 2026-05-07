@@ -1,30 +1,9 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/fairshare/Logo";
-import { Info, ArrowRight, UserPlus, X, Users } from "lucide-react";
-import { toast } from "sonner";
+import { Info, ArrowRight } from "lucide-react";
 
 const Index = () => {
-  const [name, setName] = useState("");
-  const [roommates, setRoommates] = useState<string[]>([]);
-
-  const addRoommate = (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    if (roommates.includes(trimmed)) {
-      toast.error(`${trimmed} is already added`);
-      return;
-    }
-    setRoommates((r) => [...r, trimmed]);
-    setName("");
-    toast.success(`${trimmed} added`);
-  };
-
-  const remove = (n: string) => setRoommates((r) => r.filter((x) => x !== n));
-
   return (
     <main className="min-h-screen bg-gradient-hero flex items-center justify-center px-5 py-8">
       <div className="w-full max-w-sm mx-auto flex flex-col items-center text-center">

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveGroup } from "@/hooks/useActiveGroup";
@@ -29,6 +29,7 @@ type Roommate = {
 export const RoommateSection = () => {
   const { user } = useAuth();
   const { group } = useActiveGroup();
+  const navigate = useNavigate();
   const [roommates, setRoommates] = useState<Roommate[]>([]);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -102,22 +103,28 @@ export const RoommateSection = () => {
       const { data: pub } = supabase.storage.from("roommate-avatars").getPublicUrl(path);
       avatar_url = pub.publicUrl;
     }
-    const { error } = await supabase.from("roommate_profiles").insert({
-      group_id: group.id,
-      created_by: user.id,
-      name: name.trim(),
-      email: email.trim() || null,
-      avatar_url,
-    });
+    const { data: inserted, error } = await supabase
+      .from("roommate_profiles")
+      .insert({
+        group_id: group.id,
+        created_by: user.id,
+        name: name.trim(),
+        email: email.trim() || null,
+        avatar_url,
+      })
+      .select("id")
+      .single();
     setBusy(false);
-    if (error) {
-      toast.error(error.message);
+    if (error || !inserted) {
+      console.error(error);
+      toast.error(error?.message || "Could not save roommate");
       return;
     }
-    toast.success(`${name.trim()} added to your household`);
+    toast.success(`${name.trim()} added — opening their profile`);
     reset();
     setOpen(false);
     load();
+    navigate(`/app/roommate/${inserted.id}`);
   };
 
   const isPhoto = (a: string | null) => !!a && (a.startsWith("http") || a.startsWith("blob:"));

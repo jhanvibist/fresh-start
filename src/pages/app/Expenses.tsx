@@ -52,30 +52,42 @@ const Expenses = () => {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!group || !user) return;
+    if (!user) {
+      toast.error("Please sign in again");
+      return;
+    }
+    if (!group) {
+      toast.error("Setting up your household… try again in a moment");
+      return;
+    }
     const parsed = schema.safeParse({ description, amount, category });
     if (!parsed.success) {
       toast.error(parsed.error.errors[0].message);
       return;
     }
     setBusy(true);
-    const { error } = await supabase.from("expenses").insert({
-      group_id: group.id,
-      paid_by: user.id,
-      amount: parsed.data.amount,
-      description: parsed.data.description,
-      category: parsed.data.category,
-    });
+    const { data, error } = await supabase
+      .from("expenses")
+      .insert({
+        group_id: group.id,
+        paid_by: user.id,
+        amount: parsed.data.amount,
+        description: parsed.data.description,
+        category: parsed.data.category,
+      })
+      .select()
+      .single();
     setBusy(false);
     if (error) {
-      toast.error(error.message);
+      console.error("Expense insert failed", error);
+      toast.error(error.message || "Could not save expense");
       return;
     }
-    toast.success("Expense added");
+    toast.success("Expense saved");
+    setExpenses((prev) => [data as Expense, ...prev]);
     setDescription("");
     setAmount("");
     setShowForm(false);
-    load();
   };
 
   const handleDelete = async (id: string) => {
